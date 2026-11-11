@@ -63,6 +63,14 @@ class _IosReaderPageState extends State<IosReaderPage> {
   /// 图片重新载入用的计数，换 key 强制重建。
   int _retry = 0;
 
+  /// 系统栏的真实高度（不含沉浸态被压成的 0）。
+  ///
+  /// 隐藏控件时会切 `immersiveSticky`，那一刻 `MediaQuery.padding` 变成 0。
+  /// 顶栏底栏都靠它算内边距，直接用会在切回来的第一帧先顶到屏幕边缘、
+  /// 下一帧再跳下来。这里记下最后一次看到的值，两条栏始终按它排。
+  double _insetTop = 0;
+  double _insetBottom = 0;
+
   /// 阅读引擎：管当前话与前后话的载入。
   late final ReaderController _ctl = ReaderController(pathWord: widget.comic.pathWord, group: widget.group)
     ..addListener(_onEngine);
@@ -111,6 +119,16 @@ class _IosReaderPageState extends State<IosReaderPage> {
     if (!mounted) return;
     setState(() => _tip = false);
     _prefs.mangaTipSeen = true;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 沉浸态下系统把 padding 压成 0，只在拿到真实值时才覆盖缓存——
+    // 否则收起系统栏的那一刻，我们自己的两条栏会先贴到屏幕边缘再跳回来。
+    final p = MediaQuery.paddingOf(context);
+    if (p.top > 0) _insetTop = p.top;
+    if (p.bottom > 0) _insetBottom = p.bottom;
   }
 
   @override
@@ -189,13 +207,21 @@ class _IosReaderPageState extends State<IosReaderPage> {
     }
   }
 
-  /// 显示 / 隐藏阅读控件。
+  /// 显示 / 隐藏阅读控件，并同步系统栏。
   ///
-  /// **不再切 `SystemUiMode.immersiveSticky`**。进沉浸模式之后，安卓会把
-  /// 下一次点按当作「唤出系统栏」吃掉，要再点一次才落到阅读区——这就是
-  /// 「点好几下设置才出来」的原因。现在系统栏始终 edge-to-edge，隐藏的
-  /// 只有我们自己的顶栏和底栏，点按永远第一时间到达。
-  void _setChrome(bool show) => setState(() => _chrome = show);
+  /// **控件隐藏时收系统栏，显示时还回去**。一直 edge-to-edge 的代价是：
+  /// 整页适应会在页面上下各留一条 letterbox，状态栏图标和手势条正好压在上面，
+  /// 读起来像「内容没铺满、上面压了根杠」。沉浸之后那两条就是纯黑框。
+  ///
+  /// 用 `immersiveSticky` 而不是 `immersive`：前者靠**边缘滑动**唤出系统栏，
+  /// 普通点按照常落到阅读区；后者是「下一次触摸唤出系统栏」，那一触会被系统
+  /// 吃掉——这就是以前「点好几下设置才出来」的原因。
+  void _setChrome(bool show) {
+    if (show == _chrome) return;
+    setState(() => _chrome = show);
+    SystemChrome.setEnabledSystemUIMode(show ? SystemUiMode.edgeToEdge : SystemUiMode.immersiveSticky);
+    SystemChrome.setSystemUIOverlayStyle(pageChrome);
+  }
 
   /// 换话：交给引擎，它会重建三话窗口。
   void _openChapter(String? uuid) {
@@ -208,6 +234,9 @@ class _IosReaderPageState extends State<IosReaderPage> {
     final pages = c?.pages;
     final n = pages?.length ?? 0;
     final pad = MediaQuery.paddingOf(context);
+    // 两条栏用缓存值排：沉浸态下 pad 是 0，用它会让栏在切换瞬间跳动。
+    final top = _insetTop > 0 ? _insetTop : pad.top;
+    final bottom = _insetBottom > 0 ? _insetBottom : pad.bottom;
     return Scaffold(
       backgroundColor: ReaderPalette.reader,
       body: Stack(
@@ -266,7 +295,7 @@ class _IosReaderPageState extends State<IosReaderPage> {
                 mangaTitle: widget.comic.name,
                 chapterTitle: c?.name ?? '',
                 onBack: () => Navigator.pop(context),
-                topInset: pad.top,
+                topInset: top,
               ),
             ),
           ),
@@ -286,7 +315,7 @@ class _IosReaderPageState extends State<IosReaderPage> {
                 currentPage: n == 0 ? 0 : _page + 1,
                 totalPages: n,
                 onPageChange: (i) => _ctl.jumpTo(i),
-                bottomInset: pad.bottom,
+                bottomInset: bottom,
               ),
             ),
           ),
@@ -295,7 +324,7 @@ class _IosReaderPageState extends State<IosReaderPage> {
             Positioned(
               left: 0,
               right: 0,
-              bottom: pad.bottom + 18,
+              bottom: bottom + 18,
               child: IgnorePointer(
                 child: Center(
                   child: Text(

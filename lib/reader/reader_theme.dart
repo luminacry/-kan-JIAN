@@ -23,7 +23,11 @@ class ReaderPalette {
   // ── 底层 ──
 
   /// 阅读页背板（图片周边）。
-  static Color get reader => _dark ? const Color(0xFF101113) : const Color(0xFFEFEFF1);
+  ///
+  /// 深色下是纯黑而不是 `#101113`：整页适应时页面上下会各留一条 letterbox
+  /// （比例差一点点就有一百来像素）。深灰 + 状态栏图标压在上面，读起来像
+  /// 「内容没铺满」；纯黑把这两条变成有意为之的黑框，图标也融进去。
+  static Color get reader => _dark ? const Color(0xFF000000) : const Color(0xFFEFEFF1);
 
   /// 设置面板、顶部栏、底部栏。
   static Color get sheet => _dark ? const Color(0xFF1B1C1F) : const Color(0xFFFFFFFF);
