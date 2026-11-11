@@ -168,40 +168,25 @@ class _IosShellState extends State<IosShell> {
                 child: _TabStack(index: index, children: const [IosShelfPage(), IosDiscoverPage(), IosMinePage()]),
               ),
             ),
-            // 底部渐进模糊：让悬浮标签栏下的内容渐次虚化、被底色盖住。
+            // 顶部渐进模糊：只覆盖状态栏那一条，往下正好在状态栏下沿断开。
             //
-            // 以前这里只是一条「透明 → 92% 底色」的渐变。底色能盖住内容，却
-            // 盖不住细节：高对比的漫画封面糊不掉，边缘还能看出形状，读起来就是
-            // 一块被压暗的图而不是一层材质。现在改成真模糊 + 渐浓底色，
-            // 对应 iOS 26 的 scroll edge effect（`.soft`）。
+            // **底部没有全宽模糊带**。之前有一层铺到标签栏上方，结果白吃掉
+            // 一行内容——参考的界面里，标签栏胶囊之外的内容一直到屏幕底边
+            // 都是清楚的，被糊掉的那些是因为正好在胶囊玻璃下面。全宽渐隐
+            // 是多余的一层，标签栏自己的玻璃已经负责了那件事。
             //
-            // 长度分两段（见 [ScrollEdge]）：标签栏那截均匀糊掉，栏外由
-            // [ScrollEdge.tail] 渐次变清楚——和顶部用同一个过渡长度。
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: EdgeBlur(
-                covered: ScrollEdge.bottomCovered(context),
-                tail: ScrollEdge.tail,
-                sigma: 18,
-                side: EdgeBlurSide.bottom,
-                tint: IosColors.bg,
-                tintAlpha: .72,
-              ),
-            ),
-            // 顶部渐进模糊：状态栏 + 一段等长的过渡。内容滚上来时从这里开始
-            // 虚化，大标题滚到状态栏下面不是被一刀切断，而是慢慢糊进去。
+            // 高度也不能往状态栏外多铺：大标题就在状态栏正下方（书架、发现、
+            // 我的），带子多高就压掉标题多高。参考图里正文从状态栏下沿开始
+            // 就是清晰的。
             Positioned(
               left: 0,
               right: 0,
               top: 0,
               child: EdgeBlur(
-                covered: ScrollEdge.topCovered(context),
-                tail: ScrollEdge.tail,
-                sigma: 10,
+                height: ScrollEdge.topCovered(context),
+                sigma: 12,
                 tint: IosColors.bg,
-                tintAlpha: .55,
+                tintAlpha: .45,
               ),
             ),
             _TabDock(index: index),
