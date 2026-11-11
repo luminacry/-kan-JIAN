@@ -39,5 +39,8 @@ Future<void> main() async {
   // 预热 Liquid Glass 着色器：只做磁盘到内存的读取，不阻塞首帧。
   // 只有 iOS 用液体玻璃，安卓走毛玻璃，不需要预载着色器。
   if (Platform.isIOS) await LiquidGlassWidgets.initialize();
+  // 边栏的渐进模糊是同一个库里的独立 shader，两端都在用（顶栏、标签栏），
+  // 不预载的话首帧会先退化成均匀模糊、下一帧才变成渐变。
+  await ProgressiveBlur.preload();
   runApp(const IosApp());
 }

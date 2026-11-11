@@ -55,3 +55,34 @@ class Dock {
   /// 页面内容需要给标签栏让出的高度：标签栏 + 它下面的留白 + 一点呼吸空间。
   static double clearance(BuildContext context) => height + bottom(context) + Space.x4;
 }
+
+/// 边栏渐进模糊带的几何。
+///
+/// 一条规则管两端：**被遮挡的部分 + 同一段柔和过渡**。
+///
+/// 被遮挡的部分各算各的——顶部只有状态栏，底部是「标签栏 + 它下面的手势区」，
+/// 这是屏幕结构决定的，不能强行对齐。真正需要统一的是**过渡段**：不管上面
+/// 压着什么，糊到完全清楚都走同一个 [tail]。
+///
+/// 以前两边各写各的（顶 `+14`、底 `+40`），顶部 38、底部 152，比例 1:4：
+/// 顶部刚糊开就到头了，底部却拖着一条 56dp 的尾巴，糊得漫无目的。
+class ScrollEdge {
+  ScrollEdge._();
+
+  /// 遮挡区之外再柔和过渡多高。两端共用这一个值。
+  ///
+  /// 28 的依据：它要够长到肉眼能看出「渐次变清楚」而不是一条硬边（<20 会
+  /// 读成硬切），又不能长到把内容整块吃掉（>40 时一屏里就没剩多少清楚的地方）。
+  static const tail = 28.0;
+
+  /// 顶部被遮住的长度：状态栏本身。
+  ///
+  /// 顶部没有常驻栏，大标题是跟着列表滚走的，所以遮挡区只有状态栏。
+  static double topCovered(BuildContext context) => MediaQuery.paddingOf(context).top;
+
+  /// 底部被遮住的长度：标签栏 + 它下面的留白。
+  ///
+  /// 用 [Dock.bottom] 而不是整个 [Dock.clearance]：后者还含着给页面留的
+  /// 呼吸空间，那是排版用的，不属于被栏体挡住的部分。
+  static double bottomCovered(BuildContext context) => Dock.bottom(context) + Dock.height;
+}

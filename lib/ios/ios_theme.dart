@@ -202,16 +202,23 @@ class Glass extends StatelessWidget {
       shape: LiquidRoundedSuperellipse(borderRadius: radius),
       // 这组数值是给 premium 档调的：premium 直接用原值（只有 standard 档会做归一化
       // 把 thickness 乘 0.4、lightIntensity 乘 0.6），所以光和色散要按 3D 着色的量级给。
-      // 之前那组 .5 / .01 是按 2D 档试的，放到 premium 下折射几乎看不出来。
+      //
+      // 2026-11 这一轮整体加强折射与透明：
+      // - thickness 26 → 44：玻璃越厚弯折越强，边缘的"厚透镜"感才出来
+      // - refractiveIndex 1.2 → 1.45：折射偏移更明显（1.0 是完全不弯折）
+      // - chromaticAberration .12 → .34：色散翻倍，边缘开始有彩虹分离
+      // - glassColor 不透明度 0x38/0x40 → 0x1A/0x22：染色更淡，背景透出更多
+      // - lightIntensity 1.5 → 1.9：高光更亮，和更透的底子配
+      // 注意 blur 保持中等偏低：糊太狠会把折射的位移藏掉，看起来就只是毛玻璃。
       settings: LiquidGlassSettings(
-        blur: 10,
-        thickness: 26,
+        blur: 7,
+        thickness: 44,
         // 深色下用暗色染色，浅色下用极淡的白色，保留折射的同时压住背景杂色。
-        glassColor: dark ? const Color(0x38292A31) : const Color(0x40F8F8FB),
-        lightIntensity: 1.5,
-        refractiveIndex: 1.2,
-        chromaticAberration: .12,
-        saturation: 1.5,
+        glassColor: dark ? const Color(0x1A292A31) : const Color(0x22F8F8FB),
+        lightIntensity: 1.9,
+        refractiveIndex: 1.45,
+        chromaticAberration: .34,
+        saturation: 1.6,
         shadowElevation: shadow ? 1.0 : 0.0,
       ),
       child: content,
